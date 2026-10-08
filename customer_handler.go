@@ -3,6 +3,7 @@ package main
 import(
 	"net/http"
 	 "strconv"
+	 "fmt"
 
 	db "autoerp/db/sqlc"
 	"github.com/gin-gonic/gin"
@@ -52,11 +53,10 @@ func createCustomer(c *gin.Context, queries *db.Queries){
 	func getCustomers(c *gin.Context, queries *db.Queries){
 
 		customers,err := queries.ListCustomers(c)
-
-		if err!=nil{
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error" :"Failed to fetch customers",
-			})
+		//customers, err := queries.ListCustomers(c)
+		if err != nil {
+			fmt.Println("ListCustomers error:", err)
+			c.JSON(500, gin.H{"error": err.Error()})
 			return
 		}
 
@@ -153,13 +153,12 @@ func createCustomer(c *gin.Context, queries *db.Queries){
 		}
 	
 		err = queries.DeleteCustomer(c, int32(id))
-	
+
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "Failed to delete customer",
-			})
+			c.JSON(500, gin.H{"error": err.Error()})
 			return
 		}
+		
 	
 		c.JSON(http.StatusOK, gin.H{
 			"message": "Customer deleted successfully",

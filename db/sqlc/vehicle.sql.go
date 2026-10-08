@@ -7,6 +7,8 @@ package db
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createVehicle = `-- name: CreateVehicle :one
@@ -20,9 +22,17 @@ type CreateVehicleParams struct {
 	VehicleType string
 }
 
-func (q *Queries) CreateVehicle(ctx context.Context, arg CreateVehicleParams) (Vehicle, error) {
+type CreateVehicleRow struct {
+	ID          int32
+	CustomerID  int32
+	RegNo       string
+	VehicleType string
+	CreatedAt   pgtype.Timestamp
+}
+
+func (q *Queries) CreateVehicle(ctx context.Context, arg CreateVehicleParams) (CreateVehicleRow, error) {
 	row := q.db.QueryRow(ctx, createVehicle, arg.CustomerID, arg.RegNo, arg.VehicleType)
-	var i Vehicle
+	var i CreateVehicleRow
 	err := row.Scan(
 		&i.ID,
 		&i.CustomerID,
@@ -34,8 +44,10 @@ func (q *Queries) CreateVehicle(ctx context.Context, arg CreateVehicleParams) (V
 }
 
 const deleteVehicle = `-- name: DeleteVehicle :exec
-DELETE FROM vehicles
+UPDATE vehicles
+SET deleted_at = CURRENT_TIMESTAMP
 WHERE id = $1
+  AND deleted_at IS NULL
 `
 
 func (q *Queries) DeleteVehicle(ctx context.Context, id int32) error {
@@ -44,14 +56,30 @@ func (q *Queries) DeleteVehicle(ctx context.Context, id int32) error {
 }
 
 const getVehicle = `-- name: GetVehicle :one
-SELECT id, customer_id, reg_no, vehicle_type, created_at
-FROM vehicles
-WHERE id = $1
+SELECT
+    v.id,
+    v.customer_id,
+    v.reg_no,
+    v.vehicle_type,
+    v.created_at
+FROM vehicles v
+JOIN customers c ON c.id = v.customer_id
+WHERE v.id = $1
+  AND v.deleted_at IS NULL
+  AND c.deleted_at IS NULL
 `
 
-func (q *Queries) GetVehicle(ctx context.Context, id int32) (Vehicle, error) {
+type GetVehicleRow struct {
+	ID          int32
+	CustomerID  int32
+	RegNo       string
+	VehicleType string
+	CreatedAt   pgtype.Timestamp
+}
+
+func (q *Queries) GetVehicle(ctx context.Context, id int32) (GetVehicleRow, error) {
 	row := q.db.QueryRow(ctx, getVehicle, id)
-	var i Vehicle
+	var i GetVehicleRow
 	err := row.Scan(
 		&i.ID,
 		&i.CustomerID,
@@ -63,21 +91,37 @@ func (q *Queries) GetVehicle(ctx context.Context, id int32) (Vehicle, error) {
 }
 
 const getVehiclesByCustomerID = `-- name: GetVehiclesByCustomerID :many
-SELECT id, customer_id, reg_no, vehicle_type, created_at
-FROM vehicles
-WHERE customer_id = $1
-ORDER BY id
+SELECT
+    v.id,
+    v.customer_id,
+    v.reg_no,
+    v.vehicle_type,
+    v.created_at
+FROM vehicles v
+JOIN customers c ON c.id = v.customer_id
+WHERE v.customer_id = $1
+  AND v.deleted_at IS NULL
+  AND c.deleted_at IS NULL
+ORDER BY v.id
 `
 
-func (q *Queries) GetVehiclesByCustomerID(ctx context.Context, customerID int32) ([]Vehicle, error) {
+type GetVehiclesByCustomerIDRow struct {
+	ID          int32
+	CustomerID  int32
+	RegNo       string
+	VehicleType string
+	CreatedAt   pgtype.Timestamp
+}
+
+func (q *Queries) GetVehiclesByCustomerID(ctx context.Context, customerID int32) ([]GetVehiclesByCustomerIDRow, error) {
 	rows, err := q.db.Query(ctx, getVehiclesByCustomerID, customerID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Vehicle
+	var items []GetVehiclesByCustomerIDRow
 	for rows.Next() {
-		var i Vehicle
+		var i GetVehiclesByCustomerIDRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.CustomerID,
@@ -96,26 +140,45 @@ func (q *Queries) GetVehiclesByCustomerID(ctx context.Context, customerID int32)
 }
 
 const listVehicles = `-- name: ListVehicles :many
-SELECT id, customer_id, reg_no, vehicle_type, created_at
-FROM vehicles
-ORDER BY id
+SELECT
+    v.id,
+    v.customer_id,
+    v.reg_no,
+    v.vehicle_type,
+    v.created_at,
+    c.name AS customer_name
+FROM vehicles v
+JOIN customers c ON c.id = v.customer_id
+WHERE v.deleted_at IS NULL
+  AND c.deleted_at IS NULL
+ORDER BY v.id
 `
 
-func (q *Queries) ListVehicles(ctx context.Context) ([]Vehicle, error) {
+type ListVehiclesRow struct {
+	ID           int32
+	CustomerID   int32
+	RegNo        string
+	VehicleType  string
+	CreatedAt    pgtype.Timestamp
+	CustomerName string
+}
+
+func (q *Queries) ListVehicles(ctx context.Context) ([]ListVehiclesRow, error) {
 	rows, err := q.db.Query(ctx, listVehicles)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Vehicle
+	var items []ListVehiclesRow
 	for rows.Next() {
-		var i Vehicle
+		var i ListVehiclesRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.CustomerID,
 			&i.RegNo,
 			&i.VehicleType,
 			&i.CreatedAt,
+			&i.CustomerName,
 		); err != nil {
 			return nil, err
 		}
@@ -134,6 +197,7 @@ SET
     reg_no = $2,
     vehicle_type = $3
 WHERE id = $4
+  AND deleted_at IS NULL
 RETURNING id, customer_id, reg_no, vehicle_type, created_at
 `
 
@@ -144,14 +208,22 @@ type UpdateVehicleParams struct {
 	ID          int32
 }
 
-func (q *Queries) UpdateVehicle(ctx context.Context, arg UpdateVehicleParams) (Vehicle, error) {
+type UpdateVehicleRow struct {
+	ID          int32
+	CustomerID  int32
+	RegNo       string
+	VehicleType string
+	CreatedAt   pgtype.Timestamp
+}
+
+func (q *Queries) UpdateVehicle(ctx context.Context, arg UpdateVehicleParams) (UpdateVehicleRow, error) {
 	row := q.db.QueryRow(ctx, updateVehicle,
 		arg.CustomerID,
 		arg.RegNo,
 		arg.VehicleType,
 		arg.ID,
 	)
-	var i Vehicle
+	var i UpdateVehicleRow
 	err := row.Scan(
 		&i.ID,
 		&i.CustomerID,

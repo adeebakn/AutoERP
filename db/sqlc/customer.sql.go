@@ -23,9 +23,17 @@ type CreateCustomerParams struct {
 	Email pgtype.Text
 }
 
-func (q *Queries) CreateCustomer(ctx context.Context, arg CreateCustomerParams) (Customer, error) {
+type CreateCustomerRow struct {
+	ID        int32
+	Name      string
+	Phone     string
+	Email     pgtype.Text
+	CreatedAt pgtype.Timestamp
+}
+
+func (q *Queries) CreateCustomer(ctx context.Context, arg CreateCustomerParams) (CreateCustomerRow, error) {
 	row := q.db.QueryRow(ctx, createCustomer, arg.Name, arg.Phone, arg.Email)
-	var i Customer
+	var i CreateCustomerRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
@@ -37,9 +45,9 @@ func (q *Queries) CreateCustomer(ctx context.Context, arg CreateCustomerParams) 
 }
 
 const deleteCustomer = `-- name: DeleteCustomer :exec
-DELETE FROM customers 
-WHERE 
-id=$1
+UPDATE customers
+SET deleted_at = CURRENT_TIMESTAMP
+WHERE id = $1
 `
 
 func (q *Queries) DeleteCustomer(ctx context.Context, id int32) error {
@@ -50,12 +58,20 @@ func (q *Queries) DeleteCustomer(ctx context.Context, id int32) error {
 const getCustomer = `-- name: GetCustomer :one
 SELECT id,name,phone,email,created_at
 FROM customers
-WHERE id=$1
+WHERE id=$1 AND deleted_at IS NULL
 `
 
-func (q *Queries) GetCustomer(ctx context.Context, id int32) (Customer, error) {
+type GetCustomerRow struct {
+	ID        int32
+	Name      string
+	Phone     string
+	Email     pgtype.Text
+	CreatedAt pgtype.Timestamp
+}
+
+func (q *Queries) GetCustomer(ctx context.Context, id int32) (GetCustomerRow, error) {
 	row := q.db.QueryRow(ctx, getCustomer, id)
-	var i Customer
+	var i GetCustomerRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
@@ -69,18 +85,27 @@ func (q *Queries) GetCustomer(ctx context.Context, id int32) (Customer, error) {
 const listCustomers = `-- name: ListCustomers :many
 SELECT id, name, phone, email, created_at
 FROM customers
+WHERE deleted_at IS NULL
 ORDER BY id
 `
 
-func (q *Queries) ListCustomers(ctx context.Context) ([]Customer, error) {
+type ListCustomersRow struct {
+	ID        int32
+	Name      string
+	Phone     string
+	Email     pgtype.Text
+	CreatedAt pgtype.Timestamp
+}
+
+func (q *Queries) ListCustomers(ctx context.Context) ([]ListCustomersRow, error) {
 	rows, err := q.db.Query(ctx, listCustomers)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Customer
+	var items []ListCustomersRow
 	for rows.Next() {
-		var i Customer
+		var i ListCustomersRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
@@ -99,12 +124,13 @@ func (q *Queries) ListCustomers(ctx context.Context) ([]Customer, error) {
 }
 
 const updateCustomer = `-- name: UpdateCustomer :one
-UPDATE customers 
-SET 
+UPDATE customers
+SET
     name=$1,
     phone=$2,
     email=$3
 WHERE id=$4
+  AND deleted_at IS NULL
 RETURNING id,name,phone,email,created_at
 `
 
@@ -115,14 +141,22 @@ type UpdateCustomerParams struct {
 	ID    int32
 }
 
-func (q *Queries) UpdateCustomer(ctx context.Context, arg UpdateCustomerParams) (Customer, error) {
+type UpdateCustomerRow struct {
+	ID        int32
+	Name      string
+	Phone     string
+	Email     pgtype.Text
+	CreatedAt pgtype.Timestamp
+}
+
+func (q *Queries) UpdateCustomer(ctx context.Context, arg UpdateCustomerParams) (UpdateCustomerRow, error) {
 	row := q.db.QueryRow(ctx, updateCustomer,
 		arg.Name,
 		arg.Phone,
 		arg.Email,
 		arg.ID,
 	)
-	var i Customer
+	var i UpdateCustomerRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,

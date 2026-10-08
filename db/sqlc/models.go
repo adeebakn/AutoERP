@@ -14,6 +14,7 @@ type Customer struct {
 	Phone     string
 	Email     pgtype.Text
 	CreatedAt pgtype.Timestamp
+	DeletedAt pgtype.Timestamp
 }
 
 type Invoice struct {
@@ -57,6 +58,7 @@ type Service struct {
 	Description pgtype.Text
 	Price       float64
 	CreatedAt   pgtype.Timestamp
+	DeletedAt   pgtype.Timestamp
 }
 
 type Vehicle struct {
@@ -65,6 +67,7 @@ type Vehicle struct {
 	RegNo       string
 	VehicleType string
 	CreatedAt   pgtype.Timestamp
+	DeletedAt   pgtype.Timestamp
 }
 
 type WorkOrder struct {

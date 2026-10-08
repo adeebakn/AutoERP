@@ -23,9 +23,17 @@ type CreateServiceParams struct {
 	Price       float64
 }
 
-func (q *Queries) CreateService(ctx context.Context, arg CreateServiceParams) (Service, error) {
+type CreateServiceRow struct {
+	ID          int32
+	Name        string
+	Description pgtype.Text
+	Price       float64
+	CreatedAt   pgtype.Timestamp
+}
+
+func (q *Queries) CreateService(ctx context.Context, arg CreateServiceParams) (CreateServiceRow, error) {
 	row := q.db.QueryRow(ctx, createService, arg.Name, arg.Description, arg.Price)
-	var i Service
+	var i CreateServiceRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
@@ -52,9 +60,17 @@ FROM services
 WHERE id = $1
 `
 
-func (q *Queries) GetService(ctx context.Context, id int32) (Service, error) {
+type GetServiceRow struct {
+	ID          int32
+	Name        string
+	Description pgtype.Text
+	Price       float64
+	CreatedAt   pgtype.Timestamp
+}
+
+func (q *Queries) GetService(ctx context.Context, id int32) (GetServiceRow, error) {
 	row := q.db.QueryRow(ctx, getService, id)
-	var i Service
+	var i GetServiceRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
@@ -71,15 +87,23 @@ FROM services
 ORDER BY id
 `
 
-func (q *Queries) ListServices(ctx context.Context) ([]Service, error) {
+type ListServicesRow struct {
+	ID          int32
+	Name        string
+	Description pgtype.Text
+	Price       float64
+	CreatedAt   pgtype.Timestamp
+}
+
+func (q *Queries) ListServices(ctx context.Context) ([]ListServicesRow, error) {
 	rows, err := q.db.Query(ctx, listServices)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Service
+	var items []ListServicesRow
 	for rows.Next() {
-		var i Service
+		var i ListServicesRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
@@ -114,14 +138,22 @@ type UpdateServiceParams struct {
 	ID          int32
 }
 
-func (q *Queries) UpdateService(ctx context.Context, arg UpdateServiceParams) (Service, error) {
+type UpdateServiceRow struct {
+	ID          int32
+	Name        string
+	Description pgtype.Text
+	Price       float64
+	CreatedAt   pgtype.Timestamp
+}
+
+func (q *Queries) UpdateService(ctx context.Context, arg UpdateServiceParams) (UpdateServiceRow, error) {
 	row := q.db.QueryRow(ctx, updateService,
 		arg.Name,
 		arg.Description,
 		arg.Price,
 		arg.ID,
 	)
-	var i Service
+	var i UpdateServiceRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,

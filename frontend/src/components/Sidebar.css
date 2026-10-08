@@ -1,0 +1,19 @@
+.sidebar{
+    width:220px;
+    min-height:calc(100vh-60px);
+    background-color: #111827;
+    color: white;
+    padding: 20px 0;
+}
+
+.sidebar a{
+    padding: 12px 20px;
+    cursor: pointer;
+    display: block;
+    color: white;
+    text-decoration: none;
+}
+
+.sidebar a:hover {
+    background-color: #374151;
+  }

@@ -1,0 +1,49 @@
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+}
+
+.app {
+  min-height: 100vh;
+}
+
+.layout {
+  display: flex;
+}
+
+.content {
+  flex: 1;
+  padding: 20px;
+}
+
+.dashboard-cards {
+  display: flex;
+  flex-direction: row;
+  gap: 20px;
+  flex-wrap: wrap;
+  
+}
+
+.card {
+  
+  background-color:white;
+  padding: 20px;
+  width: 200px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+
+  /*border-color: black;
+  border-width: 1px;
+  border-style: solid;*/
+
+  margin-top: 2px;
+}
+
+.card h3 {
+  margin-top: 0;
+}
+
+.card p {
+  font-size: 28px;
+  font-weight: bold;
+}
